@@ -1,0 +1,24 @@
+{
+  "name": "agent-provider-kit-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "pnpm -r --workspace-concurrency=4 typecheck",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "oxfmt": "^0.75.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "overrides": {
+      "@effect/platform-node-shared": "4.0.5",
+      "effect": "4.0.5"
+    }
+  }
+}

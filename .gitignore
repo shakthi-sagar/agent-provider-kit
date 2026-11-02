@@ -1,0 +1,15 @@
+node_modules
+dist
+*.tsbuildinfo
+.DS_Store
+
+# Local credentials and generated runtime data
+.env
+.env.*
+!.env.example
+*.log
+.vitest-cache/
+/coverage/
+/userdata/
+/caches/
+/.agent-provider-kit/
