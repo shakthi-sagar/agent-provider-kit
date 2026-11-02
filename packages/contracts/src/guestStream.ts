@@ -34,9 +34,11 @@ export type GuestShareView = typeof GuestShareView.Type;
  * owner's thread subscription sends, starting with a snapshot on every (re)connect. `view` is the
  * share itself, sent first and again when it changes.
  */
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export const GuestStreamEvent = Schema.Union([
   Schema.Struct({ type: Schema.Literal("view"), view: GuestShareView }),
   Schema.Struct({ type: Schema.Literal("thread"), item: OrchestrationV2ThreadStreamItem }),
   Schema.Struct({ type: Schema.Literal("ended") }),
 ]);
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export type GuestStreamEvent = typeof GuestStreamEvent.Type;

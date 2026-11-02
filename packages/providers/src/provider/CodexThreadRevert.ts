@@ -3,6 +3,7 @@ import type * as CodexClient from "effect-codex-app-server/client";
 import * as CodexErrors from "effect-codex-app-server/errors";
 import * as Effect from "effect/Effect";
 
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export const revertCodexThread = Effect.fn("revertCodexThread")(function* (
   client: Pick<CodexClient.CodexAppServerClient["Service"], "request">,
   threadId: string,

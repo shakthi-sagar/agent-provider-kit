@@ -3855,6 +3855,7 @@ const OrchestrationV2UnknownThreadStreamEvent = Schema.Struct({
   ),
 );
 
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export const OrchestrationV2ThreadStreamItem = withRecordIdTable(
   Schema.Union([
     Schema.Struct({
@@ -3879,6 +3880,7 @@ export const OrchestrationV2ThreadStreamItem = withRecordIdTable(
   ]),
   (item) => (item.kind === "snapshot" ? "projection" : undefined),
 );
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export type OrchestrationV2ThreadStreamItem = typeof OrchestrationV2ThreadStreamItem.Type;
 
 export class OrchestrationV2DispatchCommandError extends Schema.TaggedError<OrchestrationV2DispatchCommandError>()(
@@ -4128,6 +4130,7 @@ export class OrchestrationV2SearchThreadError extends Schema.TaggedError<Orchest
   }
 }
 
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export const OrchestrationV2RpcSchemas = {
   searchThread: {
     input: OrchestrationV2SearchThreadInput,

@@ -483,6 +483,7 @@ const codexProcessEnvironment = Effect.fn("codexProcessEnvironment")(function* (
   };
 });
 
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export const withCodexAppServerClient = Effect.fn("withCodexAppServerClient")(function* (input: {
   readonly binaryPath: string;
   readonly homePath?: string | undefined;

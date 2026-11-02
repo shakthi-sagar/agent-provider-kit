@@ -835,6 +835,7 @@ class EnvironmentWebhooksHttpApi extends HttpApiGroup.make("webhooks")
   .add(HttpApiEndpoint.patch("webhookPatch", WEBHOOK_PATH, webhookEndpoint))
   .add(HttpApiEndpoint.get("webhookGet", WEBHOOK_PATH, webhookEndpoint)) {}
 
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export class EnvironmentHttpApi extends HttpApi.make("environment")
   .add(EnvironmentMetadataHttpApi)
   .add(EnvironmentAuthHttpApi)

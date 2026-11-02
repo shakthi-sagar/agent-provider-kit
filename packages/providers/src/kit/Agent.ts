@@ -62,16 +62,17 @@ export type AgentModel = ServerProviderModel;
 
 export type AgentEvent = ProviderAdapter.ProviderAdapterV2Event;
 
-const DRIVERS = {
+export type AgentProvider = "claude" | "codex" | "antigravity" | "acp" | "pi" | "opencode";
+
+// Explicit type: inferring it makes the published .d.ts spell out every driver's environment.
+const DRIVERS: Record<AgentProvider, AnyProviderDriver<KitRuntime.KitServices>> = {
   claude: ClaudeDriver,
   codex: CodexDriver,
   antigravity: AntigravityDriver,
   acp: AcpRegistryDriver,
   pi: PiDriver,
   opencode: OpenCodeDriver,
-} satisfies Record<string, AnyProviderDriver<KitRuntime.KitServices>>;
-
-export type AgentProvider = keyof typeof DRIVERS;
+};
 
 export interface InstanceOptions {
   readonly provider: AgentProvider;

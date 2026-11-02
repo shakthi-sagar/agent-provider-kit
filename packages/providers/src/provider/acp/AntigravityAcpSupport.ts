@@ -101,6 +101,7 @@ export function antigravityModelOptions(
 }
 
 /** Runtime 1.4 reports thinking as its own option; 1.3 encoded it in the model ID. */
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export function antigravityThinkingConfig(
   configOptions: ReadonlyArray<EffectAcpSchema.SessionConfigOption> | null | undefined,
 ) {

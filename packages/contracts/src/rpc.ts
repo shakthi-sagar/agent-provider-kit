@@ -1969,6 +1969,7 @@ export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthori
   { error: EnvironmentAuthorizationError },
 ) {}
 
+/** @internal Too large for declaration emit; the kit's published types leave it out. */
 export const WsRpcGroup = RpcGroup.make(
   WsGuestShareCreateRpc,
   WsServerProbeRpc,

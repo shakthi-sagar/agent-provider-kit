@@ -3,7 +3,9 @@
 The code comes from [pingdotgg/t3code](https://github.com/pingdotgg/t3code) at commit
 `955e2bfbb5c092c54ad795c8d379fec99702a6b5`.
 
-The upstream MIT license and copyright notice are preserved in [LICENSE](LICENSE).
+This repository is a GitHub fork of T3 Code. Its history starts from that commit, with the kit's work on
+top, so `git diff 955e2bf` shows every change. The upstream MIT license and copyright notice are
+preserved in [LICENSE](LICENSE).
 
 ## Layout
 
@@ -38,6 +40,10 @@ node scripts/copy-closure.mjs <t3>/apps/server/src packages/providers/src \
   notification and the turn hung. Regenerate with:
   `PATH=../../node_modules/.bin:$PATH node scripts/generate.ts`.
 - **`tsconfig.base.json`**: `deterministicKeys` is turned off.
+- **`/** @internal */` tags** on a few declarations whose inferred types are too large for TypeScript to
+  write into a `.d.ts` (the RPC, HTTP-API and stream aggregates in `contracts`, and three internal Codex
+  and Antigravity helpers). The build uses `stripInternal`, so those names are left out of the published
+  types; nothing else in the repo uses them, and the source types are unchanged.
 
 ## Pi and OpenCode
 
@@ -69,3 +75,15 @@ upstream driver behavior; unsupported native operations remain unsupported. See 
 - Remote sign-in completion
 - The Cursor, Grok and other drivers
 - The upstream Claude and Codex adapter tests, which need about 250 app files each
+
+## Publishing to npm
+
+`pnpm build:npm` (`scripts/build-npm.mjs`) writes the package to `packages/kit/dist`; publish that
+directory with `npm publish packages/kit/dist`. It bundles every workspace package, because they are
+private and Node refuses to run `.ts` files from `node_modules`. It also bundles `@opencode/*`, which
+pins its own `effect` and would otherwise install a second copy next to the kit's. The other runtime
+dependencies stay external and are pinned to the installed versions. `@effect/platform-node-shared` is
+pinned directly because the monorepo's `pnpm.overrides` do not apply to consumers.
+
+After a build, check the result the way a user gets it: `npm pack` it, install the tarball in an empty
+project, and confirm `npm ls effect` shows a single copy.

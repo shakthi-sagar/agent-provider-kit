@@ -4,10 +4,12 @@
   "type": "module",
   "scripts": {
     "typecheck": "pnpm -r --workspace-concurrency=4 typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "build:npm": "node scripts/build-npm.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "esbuild": "^0.28.2",
     "oxfmt": "^0.75.0",
     "typescript": "catalog:",
     "vitest": "catalog:"

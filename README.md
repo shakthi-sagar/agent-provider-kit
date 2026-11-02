@@ -1,26 +1,25 @@
 # Agent Provider Kit
 
-A personal library for driving AI coding agents (Claude Code, Codex, Antigravity, Pi, OpenCode, any ACP agent, and
-OpenAI- or Anthropic-compatible APIs) from any project. It reuses T3 Code's provider drivers. See
-[UPSTREAM.md](UPSTREAM.md).
+Drive AI coding agents from your own code: Claude Code, Codex, Antigravity, Pi, OpenCode, any ACP agent,
+and OpenAI- or Anthropic-compatible APIs (DeepSeek, OpenRouter, ...). One small Promise/async-iterator API.
+
+This is a fork of [T3 Code](https://github.com/pingdotgg/t3code) (MIT). The provider drivers are T3's;
+this repo cuts them out of the app and adds a standalone API on top. See [UPSTREAM.md](UPSTREAM.md) for
+what was kept, what changed, and how to pull in newer T3 code.
 
 ## Install
 
-The kit ships as TypeScript source (there is no build step). It needs Node 22.18+, which runs `.ts`
-files directly.
-
 ```sh
-pnpm add link:~/Projects/agent-provider-kit/packages/kit
+npm install agent-provider-kit
 ```
 
-To typecheck a consumer project, use the same compiler and flags as the kit. TypeScript 5.9 reports
-inference errors inside the kit source.
+Needs Node 22.18+. The package is bundled JavaScript with type declarations; TypeScript projects get
+the full types with no extra setup. The agents themselves (the `claude`, `codex`, `pi`, `opencode` CLIs)
+are not bundled: install and sign in to the ones you want to use.
 
-```sh
-pnpm add -D typescript@npm:@tsc-rs/typescript@0.8.0
-# tsconfig: "strict", "exactOptionalPropertyTypes", "noUncheckedIndexedAccess",
-#           "allowImportingTsExtensions", "module"/"moduleResolution": "NodeNext"
-```
+To work on the kit itself, clone this repo, run `pnpm install`, and link the source into another
+project with `pnpm add link:/path/to/agent-provider-kit/packages/kit` (Node runs the `.ts` source
+directly). `pnpm build:npm` produces the publishable package in `packages/kit/dist`.
 
 ## Use
 
@@ -175,5 +174,6 @@ node packages/providers/scripts/smoke.ts codex gpt-6.1-sol
 node packages/providers/scripts/smoke.ts antigravity gemini-3.8-flash-low
 ```
 
-`pnpm typecheck` and `pnpm test` run the offline checks. The 32 markdown/math UI tests in
-`packages/shared` fail and are not relevant to the kit.
+`pnpm typecheck` and `pnpm test` run the offline checks. 32 tests in `packages/shared` (GFM-table math,
+the composer's inline tokens and one hourly-usage formatter) currently fail. They cover UI-only code the kit
+does not call; the markdown pipeline the Codex adapter uses passes.
