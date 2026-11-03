@@ -1,179 +1,83 @@
-# Agent Provider Kit
+# Session support
 
-A personal library for driving AI coding agents (Claude Code, Codex, Antigravity, Pi, OpenCode, any ACP agent, and
-OpenAI- or Anthropic-compatible APIs) from any project. It reuses T3 Code's provider drivers. See
-[UPSTREAM.md](UPSTREAM.md).
+## Coding sessions
 
-## Install
+`kit.open()` creates a coding-agent session. Repeated `send()` calls keep its conversation.
+Save `agent.serialize()` and pass the token as `open({ resume })` to reopen later. Keep the same
+provider, instance, credentials, working directory and kit state directory. Native history must
+still exist; a token is not a transcript. Resume preserves native identity and turn numbering.
 
-The kit ships as TypeScript source (there is no build step). It needs Node 22.18+, which runs `.ts`
-files directly.
+The Promise API exposes capabilities, model catalogs, history, fork, rollback, compaction,
+configuration changes, attachments, steering, approvals/user input, interruption and task/subagent
+controls. Support depends on the provider; unsupported operations reject rather than emulate success.
+`listSessions()` returns coding handles currently owned by this kit. `listNativeSessions()` uses
+native driver inventory, currently exposed by generic ACP. Durable session lists/transcripts belong
+to the application. The kit does not run T3's autonomous continuation worker or filesystem checkpoint manager.
 
-```sh
-pnpm add link:~/Projects/agent-provider-kit/packages/kit
-```
+Coding sessions default to full access. They are intended for applications that deliberately give
+an agent workspace/editor/shell access. `approval-required` alone is not a game-only tool policy.
 
-To typecheck a consumer project, use the same compiler and flags as the kit. TypeScript 5.9 reports
-inference errors inside the kit source.
+## Restricted sessions (0.2.0)
 
-```sh
-pnpm add -D typescript@npm:@tsc-rs/typescript@0.8.0
-# tsconfig: "strict", "exactOptionalPropertyTypes", "noUncheckedIndexedAccess",
-#           "allowImportingTsExtensions", "module"/"moduleResolution": "NodeNext"
-```
+`kit.openRestricted()` supports Claude, Pi, OpenCode, Codex and Antigravity through separate
+restricted transports. Ordinary coding defaults are unchanged. `send()` accepts plain JSON Schema,
+per-turn application tools, deadlines, cancellation, turn limits and tool-call limits. Tool inputs
+are validated before handlers execute; final values and optional tool outputs are validated too.
+Missing or invalid output rejects. The default tool list is empty and replaces the prior list.
 
-## Use
+Claude uses native SDK tools and native resume. The other transports disable native tools and use a
+host-mediated JSON action protocol. Their `serialize()` tokens preserve bounded conversation history,
+replayed into fresh native processes. Tokens bind provider, model and logical cwd, contain conversation
+and tool-result text, and must be kept private. They are incompatible with ordinary coding tokens.
+The native workspaces/profiles are private and disposable; caller cwd is not exposed to the model.
 
-```ts
-import { createAgentKit, openaiCompatible } from "agent-provider-kit";
+Pi and Antigravity return `outputMode: "validated-json"`: exact JSON parsing followed by local schema
+validation. Codex/OpenCode default to `native-schema` and also support explicit `validated-json`.
+There is no automatic fallback from schema generation or extraction of JSON from arbitrary prose.
+Claude supports native-schema only. Unknown cost is `null`; `maxBudgetUsd` is Claude-only and rejects
+on other transports. All support cancellation and kit-owned cleanup.
 
-const kit = createAgentKit(); // state in ~/.agent-provider-kit
-try {
-  const agent = await kit.open({ provider: "claude", model: "claude-haiku-4-5", cwd: process.cwd() });
-  for await (const event of agent.send("Fix the failing test")) {
-    if (event.type === "message.updated") console.log(event.message.text);
-  }
-  // agent.respond({ requestId, decision }) answers approval requests; agent.interrupt() stops a turn.
-} finally {
-  await kit.dispose();
-}
-```
+Verified native contracts: Pi 1.4.0 flags, OpenCode v1 API (tested 1.18.35), Codex 0.166.x
+(explicit version guard), Antigravity 1.4.1+ enabledTools allowlist. Runtime executables are trusted.
+Updates may require adapter changes; rejection is preferable to weakening tool policy.
 
-The `provider` option takes one of these values:
+Generic ACP requires `runtime: { command, args? }` and an extension, since standard ACP cannot disable
+internal tools. Initialization must advertise `_meta.agentProviderKit` with `restrictedExecution: 1`
+and `nativeTools: "deny-all"`. The session must acknowledge the requested policy with
+`nativeTools: "deny-all"`, `inheritedMcp: false`, `contextFiles: false`, `hooks: false`.
+The client disables filesystem/terminal callbacks and requests no MCP servers. Native output schema
+support must also be explicitly advertised; otherwise the transport uses validated-json. Unmodified
+ACP servers without this enforcement contract reject before a prompt is sent.
 
-| `provider` | Needs |
-| --- | --- |
-| `claude` | The `claude` CLI, signed in |
-| `codex` | The `codex` CLI, signed in (regular setup; managed Codex is not supported) |
-| `antigravity` | `await kit.install("antigravity")`, then `kit.signIn({ provider: "antigravity" })` once |
-| `pi` | The `pi` CLI with its provider credentials configured |
-| `opencode` | The `opencode` CLI with its provider credentials configured |
-| `acp` | `config: { source: "local", commandPath, commandArgs }` or a registry agent |
+## Trust boundary
 
-`send` yields T3's `ProviderAdapterV2Event`s until that turn's `turn.terminal`. It throws if the
-turn fails. To continue a conversation, pass `resume: agent.providerThread`, or persist `agent.serialize()`
-and pass that string as `resume` after restarting. See [session support](SESSION_SUPPORT.md).
+Restricted execution is a model-tool boundary, not an OS sandbox. The native CLI still accesses its
+own credentials, network and session files. Application-supplied schemas and handlers are trusted;
+handlers must enforce authorization and honour cancellation. Already-performed side effects cannot
+be undone by aborting a turn. Host administrator-managed policy is outside the kit's control; the
+normal user/project hooks are disabled. Isolate the process separately where untrusted host policy
+or process-level access is a concern.
 
-### Continuing a session
+For contestants, supply only filtered observations, use a disposable cwd containing no hidden data,
+and validate actions again inside the game engine. For Archive, structured edits can be reviewed
+before applying them. For Content Factory, explicit studio handlers must preserve the human approval
+step; coding sessions remain appropriate when shell/editor access is intentional.
 
-Call `agent.send()` again to continue an open conversation. To close the runtime and resume later:
+The package supplies the Claude SDK's Zod 4 dependency independently of a host application's Zod 3.
+The public schema boundary accepts JSON Schema, with no Zod types required.
 
-```ts
-const saved = agent.serialize(); // save after consuming the turn's events
-await agent.close();
-// Store `saved` in your application's database or a file.
-const resumed = await kit.open({ provider: "claude", model, cwd, resume: saved });
-for await (const event of resumed.send("Continue where we left off")) {
-  // Handle the same events as any other turn.
-}
-```
+## Verification
 
-Keep the same provider, instance, configuration, working directory and kit state directory.
-The token stores native session references and metadata; the provider must retain its native history.
-It does not store a transcript or your provider credentials. Keep saved tokens private because they
-can contain native paths and conversation metadata. Native resume support depends on the provider;
-an arbitrary ACP agent must implement session resume/load. Send messages sequentially per session.
+Facade and restricted tests cover lifecycle, resume, schema rejection, per-turn tool dispatch,
+policy acknowledgment, cancellation, timeouts and teardown using protocol fixtures and mocked SDK
+queries. Run the targeted kit tests and workspace typecheck before packaging.
 
-### Session controls
+`pnpm verify:restricted-native` exercises real installed Pi, Codex and OpenCode binaries against a
+local fake model API with dummy credentials. It checks that only the internal OpenCode formatter
+(or no native tools) reaches the API and that application tool results reach the next completion.
+`pnpm verify:restricted-antigravity` checks the installed native Python allowlist implementation:
+an empty allowlist disables all 15 built-ins. Antigravity protocol behavior is also fixture-tested;
+live Antigravity authentication/inference has not been exercised. These checks use no live inference
+credits. Claude SDK enforcement is fixture-tested plus an initialization-only native control check.
 
-```ts
-const capabilities = await agent.capabilities(); // negotiated for this opened session
-const history = await agent.history();
-const fork = await agent.fork();                 // independent AgentSession
-await agent.rollback({ target, providerThreadTurns: history.providerTurns });
-for await (const event of agent.compact("Keep the current task and decisions")) { /* ... */ }
-await agent.configure({ model: nextModel, options: modelOptions });
-await agent.configure({ runtimeMode: "approval-required" });
-// While a native turn is running:
-await agent.steer("Focus on the failing test first");
-await agent.stopTask(taskId);
-await agent.stopSubagent(nativeTaskId);
-const { matched } = await agent.awaitBackgroundTasks(taskIds, true);
-const pending = await agent.hasPendingBackgroundWork();
-```
-
-These methods delegate to the provider and reject unsupported operations. `rollback` takes T3's
-checkpoint target (`thread_start` or `provider_turn`) and the known provider turns, exported as
-`AgentRollbackOptions`. Rollback changes the conversation; it does not revert workspace files.
-Forking a specific turn uses `agent.fork({ providerTurnId, sourceProviderTurns })` when supported.
-`configure` applies model/option and runtime-policy changes while idle, using the provider's
-transition plan. Changes that require a restart/handoff reject with instructions to reopen using
-the serialized token. Provider option keys come from that provider's model settings; the kit does
-not invent a universal effort key. `awaitBackgroundTasks` marks tasks as awaited/unawaited and
-returns matched IDs; it does not block until those tasks complete.
-
-`kit.capabilities({ provider })` returns the driver's baseline. Prefer `agent.capabilities()` after
-opening, because protocols such as ACP negotiate additional abilities during startup. Operations
-on one session are serialized: consume the active turn before history, fork, rollback or configure.
-Use `steer`, `respond`, `interrupt` or task controls to interact during a turn. A second `send` is
-rejected while a turn is active; separate sessions can run concurrently.
-
-### Attachments and session listing
-
-```ts
-const file = await kit.attachment("/path/to/notes.txt", { mimeType: "text/plain" });
-const image = await kit.attachment("/path/to/screenshot.png", { mimeType: "image/png" });
-for await (const event of agent.send("Review these", { attachments: [file, image] })) { /* ... */ }
-
-const active = kit.listSessions(); // AgentSession handles opened by this kit
-const native = await kit.listNativeSessions({ provider: "acp", config, cwd });
-```
-
-`attachment` validates metadata/size and copies the file into the kit's attachment directory.
-The provider still decides which attachment formats it can consume. `listSessions` lists open kit
-handles; it does not scan native CLI histories or persist transcripts. `listNativeSessions` calls
-the driver's native inventory (currently exposed by the generic ACP driver) and rejects for drivers
-that do not expose one. Save `serialize()` tokens in your application to build a durable session list.
-The kit has task controls but does not run T3's autonomous continuation worker or filesystem checkpoint manager.
-
-### Model listing
-
-`await kit.models({ provider: "pi" })` returns the provider's model catalog. Each entry includes
-`slug`, `name`, capabilities, and optional default metadata. Pass the chosen `slug` to `kit.open()`.
-Use `{ refresh: true }` to reload. Pi and OpenCode use their own configured providers and credentials;
-model IDs include the backing provider, such as `openai-codex/...` or `opencode/...`.
-
-### Usage and plan limits
-
-```ts
-const models = await kit.models({ provider: "codex" }); // slug, name, isDefault, capabilities, ...
-// Pass { refresh: true } to reload, or cwd for workspace-specific discovery.
-const { account, limits } = await kit.usageLimits({ provider: "claude" }); // { refresh: true } re-probes
-// account: email and plan ("Claude Pro Subscription"); limits.windows: [{ label: "Session", usedPercent: 85, resetsAt }, ...]
-const report = await kit.usage(); // { total, byInstance, byModel, pricing }
-```
-
-- **Plan limits** are available for Claude and Codex subscriptions, and for Antigravity after sign-in.
-- **`usage()`** counts the turns this kit instance has run. It keeps no history across restarts.
-- **`costUsd`** is a list-price estimate from LiteLLM's rate table, cached for 24h in the kit directory. On subscription plans it is the API-equivalent cost, not what you're billed. Models with no known price are counted in `unpricedTurns` and add nothing to the cost.
-- Each turn's raw usage is also on `provider_turn.updated` events (`providerTurn.tokenUsage` and `providerTurn.turnTokenUsage`).
-
-### API providers (DeepSeek, OpenRouter, ...)
-
-```ts
-kit.open({ ...anthropicCompatible({ baseUrl: "https://api.deepseek.com/anthropic", apiKey }), model, cwd });
-kit.open({ ...openaiCompatible({ baseUrl: "https://openrouter.ai/api/v1", apiKey }), model, cwd });
-```
-
-- `anthropicCompatible` runs Claude Code against the endpoint.
-- `openaiCompatible` runs Codex against the endpoint. The endpoint must support the **Responses API**:
-  Codex 0.166 no longer accepts Chat Completions.
-
-### Effect API
-
-`agent-provider-kit/effect` exports the drivers and `KitRuntime.layer(options)`, which provides
-every service they need.
-
-## Live checks
-
-```sh
-node packages/providers/scripts/signin.ts antigravity        # one-time Google sign-in
-# Inside T3 Code on Linux: avoid its HTTP port probes consuming the OAuth callback
-node packages/providers/scripts/signin.ts antigravity --isolated
-node packages/providers/scripts/smoke.ts claude claude-haiku-4-5
-node packages/providers/scripts/smoke.ts codex gpt-6.1-sol
-node packages/providers/scripts/smoke.ts antigravity gemini-3.8-flash-low
-```
-
-`pnpm typecheck` and `pnpm test` run the offline checks. The 32 markdown/math UI tests in
-`packages/shared` fail and are not relevant to the kit.
+The npm build is checked separately after these tests. No release is published by these commands.

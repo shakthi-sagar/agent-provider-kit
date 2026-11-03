@@ -23,3 +23,14 @@ export {
   openaiCompatible,
   type ApiProviderOptions,
 } from "@t3tools/providers/kit/apiProviders";
+
+export {
+  UnsupportedRestrictedProviderError,
+  RestrictedValidationError,
+  type AgentJsonSchema,
+  type RestrictedTool,
+  type RestrictedTurn,
+  type RestrictedResult,
+  type OpenRestrictedOptions,
+  type RestrictedSession,
+} from "@t3tools/providers/kit/Restricted";

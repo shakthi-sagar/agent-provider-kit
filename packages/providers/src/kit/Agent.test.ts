@@ -36,6 +36,30 @@ const features = {
 } as const;
 
 describe("createAgentKit", () => {
+  it("owns restricted session lifetime without starting a provider for aborted requests", async () => {
+    const restrictedKit = createAgentKit({ baseDir });
+    const agent = await restrictedKit.openRestricted({
+      provider: "claude",
+      model: "test",
+      cwd: baseDir,
+    });
+    const controller = new AbortController();
+    controller.abort(new Error("cancel before provider startup"));
+    await expect(
+      agent.send({ text: "test", outputSchema: { type: "object" }, signal: controller.signal }),
+    ).rejects.toThrow(/cancel before/);
+    await expect(
+      restrictedKit.openRestricted({ provider: "unknown", model: "test", cwd: baseDir }),
+    ).rejects.toThrow(/not verified/);
+    await restrictedKit.dispose();
+    await expect(agent.send({ text: "test", outputSchema: { type: "object" } })).rejects.toThrow(
+      /closed/,
+    );
+    await expect(
+      restrictedKit.openRestricted({ provider: "claude", model: "test", cwd: baseDir }),
+    ).rejects.toThrow(/disposed/);
+  }, 60_000);
+
   it("closing an active session wakes its waiting event consumer", async () => {
     const agent = await kit.open({
       ...acp,

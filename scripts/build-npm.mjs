@@ -162,10 +162,12 @@ const installedVersion = (name) => {
   }
   throw new Error(`Cannot find an installed version of ${name}`);
 };
+// SDK peer dependencies are explicit package dependencies so a consumer can keep Zod 3
+// while this package supplies Zod 4 to the Claude Agent SDK.
 // Transitive packages the monorepo pins with pnpm.overrides. Declared directly, so npm dedupes to one copy.
 const rootOverrides = readJson(path.join(root, "package.json")).pnpm?.overrides ?? {};
 const pinned = { "@effect/platform-node-shared": rootOverrides["@effect/platform-node-shared"] };
-const allDependencies = [...new Set([...dependencies, ...typeDependencies, ...Object.keys(pinned)])].sort();
+const allDependencies = [...new Set([...dependencies, ...typeDependencies, ...Object.keys(pinned), "zod", "@modelcontextprotocol/sdk", "@anthropic-ai/sdk"])].sort();
 fs.writeFileSync(
   path.join(out, "package.json"),
   JSON.stringify(

@@ -5,7 +5,9 @@
   "scripts": {
     "typecheck": "pnpm -r --workspace-concurrency=4 typecheck",
     "test": "pnpm -r test",
-    "build:npm": "node scripts/build-npm.mjs"
+    "build:npm": "node scripts/build-npm.mjs",
+    "verify:restricted-native": "node scripts/verify-restricted-native.mjs",
+    "verify:restricted-antigravity": "python3 scripts/verify-restricted-antigravity.py"
   },
   "devDependencies": {
     "@types/node": "catalog:",

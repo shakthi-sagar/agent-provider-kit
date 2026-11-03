@@ -1,0 +1,114 @@
+{
+  "slug": "kit-restricted",
+  "display_name": "Restricted completion",
+  "description": "Tool-free structured completion",
+  "default_reasoning_level": "low",
+  "supported_reasoning_levels": [
+    {
+      "effort": "low",
+      "description": "Configured reasoning level."
+    },
+    {
+      "effort": "medium",
+      "description": "Configured reasoning level."
+    },
+    {
+      "effort": "high",
+      "description": "Configured reasoning level."
+    },
+    {
+      "effort": "xhigh",
+      "description": "Configured reasoning level."
+    },
+    {
+      "effort": "max",
+      "description": "Configured reasoning level."
+    },
+    {
+      "effort": "ultra",
+      "description": "Configured reasoning level."
+    }
+  ],
+  "shell_type": "disabled",
+  "visibility": "list",
+  "supported_in_api": true,
+  "priority": 1,
+  "additional_speed_tiers": [],
+  "service_tiers": [],
+  "available_access_programs": {
+    "cyber": []
+  },
+  "availability_nux": null,
+  "upgrade": null,
+  "model_messages": {
+    "persistent_instructions": "Return only the requested JSON response.",
+    "instructions_template": "Return only the requested JSON response.",
+    "approvals": {
+      "on_request": null,
+      "on_request_auto_review": "",
+      "never": null,
+      "unless_trusted": null
+    },
+    "collaboration_modes": {
+      "default": "",
+      "plan": null
+    },
+    "auto_review": {
+      "policy": null,
+      "policy_template": null,
+      "rejection_instructions": "",
+      "timeout_instructions": null
+    },
+    "permissions": null,
+    "multi_agent": {
+      "role": {
+        "root": "",
+        "subagent": ""
+      },
+      "mode": null
+    },
+    "token_budget": {
+      "enabled": false,
+      "use_history_notes_extension": false,
+      "reminder_threshold_tokens": 6144,
+      "reminder_message_template": "",
+      "guidance_message": "",
+      "auto_compact_fallback_prompt": "",
+      "auto_compact_fallback_buffer_tokens": 16384
+    },
+    "guardian_v2": {
+      "classifier_instructions": ""
+    },
+    "confirmation_policies": {
+      "browser_use": "",
+      "computer_use": ""
+    }
+  },
+  "include_skills_usage_instructions": false,
+  "include_plugin_usage_instructions": false,
+  "include_apps_usage_instructions": false,
+  "default_reasoning_summary": "none",
+  "support_verbosity": true,
+  "default_verbosity": "low",
+  "apply_patch_tool_type": null,
+  "web_search_tool_type": "text_and_image",
+  "truncation_policy": {
+    "mode": "tokens",
+    "limit": 10000
+  },
+  "supports_image_detail_original": true,
+  "context_window": 500000,
+  "max_context_window": 872000,
+  "comp_hash": "3000",
+  "effective_context_window_percent": 95,
+  "experimental_supported_tools": [],
+  "input_modalities": ["text", "image"],
+  "supports_search_tool": false,
+  "supports_experimental_context": false,
+  "use_responses_lite": true,
+  "supports_reasoning_effort_updates": true,
+  "node_repl_auto_review_required": true,
+  "node_repl_disabled": true,
+  "multi_agent_version": "v2",
+  "multi_agent_reasoning_effort": "xhigh"
+}

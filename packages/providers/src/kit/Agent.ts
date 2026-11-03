@@ -51,12 +51,19 @@ import * as ServerConfig from "../config.ts";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
+import { resolveAntigravityInstanceDirectories } from "../provider/antigravityAuthSupport.ts";
 import * as AntigravityInstallation from "../provider/AntigravityInstallation.ts";
 import { AntigravityDriver } from "../provider/Drivers/AntigravityDriver.ts";
 import { ClaudeDriver } from "../provider/Drivers/ClaudeDriver.ts";
 import { CodexDriver } from "../provider/Drivers/CodexDriver.ts";
 import * as KitRuntime from "./KitRuntime.ts";
 import { createUsageTracker, loadRates, turnTotals, type UsageReport } from "./usage.ts";
+
+import {
+  openRestrictedSession,
+  type OpenRestrictedOptions,
+  type RestrictedSession,
+} from "./Restricted.ts";
 
 export type AgentModel = ServerProviderModel;
 
@@ -164,6 +171,8 @@ export interface AccountUsage {
 }
 
 export interface AgentKit {
+  /** Separate tool-restricted transport; unsupported providers reject before startup. */
+  openRestricted(options: OpenRestrictedOptions): Promise<RestrictedSession>;
   open(options: OpenAgentOptions): Promise<AgentSession>;
   capabilities(options: InstanceOptions): Promise<AgentCapabilities>;
   /** Sessions currently open in this kit. Persist serialize() tokens in your application. */
@@ -213,6 +222,8 @@ export function createAgentKit(options: Partial<KitRuntime.KitRuntimeOptions> = 
     { readonly key: string; readonly instance: Promise<ProviderInstance> }
   >();
   const sessions = new Set<AgentSession>();
+  const restrictedSessions = new Set<RestrictedSession>();
+  let disposed = false;
   const discoveredModelCatalogs = new WeakSet<ProviderInstance>();
   const usage = createUsageTracker();
 
@@ -721,6 +732,46 @@ export function createAgentKit(options: Partial<KitRuntime.KitRuntimeOptions> = 
   };
 
   return {
+    openRestricted: async (options) => {
+      if (disposed) throw new Error("Agent kit is disposed.");
+      const session = openRestrictedSession(options, {
+        directory: NodePath.join(baseDir, "userdata", "restricted"),
+        antigravity: async () =>
+          run(
+            Effect.gen(function* () {
+              const installation = yield* AntigravityInstallation.AntigravityInstallation;
+              const selected = yield* installation.acquire(options.runtime?.command, {
+                ...process.env,
+                ...options.env,
+              });
+              const directories = yield* resolveAntigravityInstanceDirectories(
+                NodePath.join(baseDir, "userdata"),
+                ProviderInstanceId.make(options.instance ?? "antigravity"),
+              );
+              return {
+                command: selected.executablePath,
+                args: process.platform === "linux" ? ["--uid="] : [],
+                credentialDirectory: directories.profile,
+                env: {
+                  ANTIGRAVITY_HARNESS_PATH: selected.harnessPath,
+                  ...((options.env?.SSL_CERT_FILE ?? process.env.SSL_CERT_FILE)
+                    ? { SSL_CERT_FILE: options.env?.SSL_CERT_FILE ?? process.env.SSL_CERT_FILE }
+                    : process.platform === "linux"
+                      ? { SSL_CERT_FILE: "/etc/ssl/certs/ca-certificates.crt" }
+                      : {}),
+                },
+              };
+            }).pipe(Effect.provideService(Scope.Scope, kitScope)),
+          ),
+      });
+      const close = session.close;
+      session.close = async () => {
+        restrictedSessions.delete(session);
+        await close();
+      };
+      restrictedSessions.add(session);
+      return session;
+    },
     open,
     capabilities: async (input) =>
       run((await getInstance(input)).orchestrationAdapter.getCapabilities()),
@@ -783,6 +834,8 @@ export function createAgentKit(options: Partial<KitRuntime.KitRuntimeOptions> = 
     signIn,
     install,
     dispose: async () => {
+      disposed = true;
+      await Promise.all([...restrictedSessions].map((session) => session.close()));
       await Promise.all([...sessions].map((session) => session.close()));
       await run(Scope.close(kitScope, Exit.void));
       await runtime.dispose();

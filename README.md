@@ -53,6 +53,85 @@ The `provider` option takes one of these values:
 status for provider-reported failures; startup/protocol exceptions reject the iterator. To continue a conversation, pass `resume: agent.providerThread`, or persist `agent.serialize()`
 and pass that string as `resume` after restarting. See [session support](SESSION_SUPPORT.md).
 
+### Restricted execution (0.2.0)
+
+`kit.open()` is a coding-agent API and defaults to full access. For game contestants or narrowly
+scoped application actions, use `openRestricted()` instead. Claude, Pi, OpenCode, Codex and
+Antigravity have dedicated restricted transports. Generic ACP requires explicit policy negotiation;
+ordinary ACP permission callbacks alone cannot enforce this boundary.
+
+```ts
+const agent = await kit.openRestricted({
+  provider: "claude",
+  model: "claude-haiku-4-5",
+  cwd: "/path/to/disposable-workspace",
+  systemPrompt: "Choose an action from the supplied observation and tools.",
+});
+const result = await agent.send({
+  text: JSON.stringify(playerObservation), // filter hidden state in your application
+  outputSchema: {
+    type: "object",
+    properties: { action: { type: "string", enum: ["pass", "move"] } },
+    required: ["action"], additionalProperties: false,
+  },
+  tools: [{
+    name: "inspect_visible_item",
+    description: "Inspect an item this player is authorized to see",
+    inputSchema: {
+      type: "object", properties: { id: { type: "string" } },
+      required: ["id"], additionalProperties: false,
+    },
+    execute: async ({ id }, { signal }) => inspectAuthorizedItem(id, signal),
+  }],
+  maxTurns: 4,
+  maxToolCalls: 1,
+  timeoutMs: 30_000,
+  signal: abortController.signal,
+});
+// result.output is unknown, validated against outputSchema. Apply domain validation too.
+const action = gameEngine.validateAction(result.output);
+const resumeToken = agent.serialize(); // reopen via openRestricted({ ...options, resume: resumeToken })
+await agent.close();
+```
+
+Schemas are plain JSON Schema draft-07 with standard formats; no Zod types are required. Tool
+inputs are validated before dispatch, and optional tool output schemas validate handler results.
+The explicit per-turn tool list replaces the previous list and defaults to empty.
+
+| Provider | Native tool restriction | Output and conversation |
+| --- | --- | --- |
+| Claude | Empty SDK built-ins, isolated settings/MCP, deny outside explicit tools | Native schema; native conversation resume |
+| Pi | `--no-tools`, extensions/MCP/skills/context disabled, private profile | Strict validated JSON; host-managed history |
+| OpenCode | Private pure server, deny-all tools/permissions; only internal formatter allowed | Native schema; host-managed history |
+| Codex | Private profile and tool-free catalog; features/skills/plugins/MCP disabled | Native schema; host-managed history; requires CLI 0.166.x |
+| Antigravity | Native `enabledTools: []`, private profile, no client filesystem/terminal/MCP | Strict validated JSON; host-managed history; requires server 1.4.1+ |
+| Generic ACP | Explicit restricted policy acknowledgment; see [session support](SESSION_SUPPORT.md) | Negotiated native schema or strict validated JSON; host-managed history |
+
+For non-Claude providers, native tools stay disabled. The model returns a JSON action envelope,
+and the kit validates it before invoking an application handler. Pi and Antigravity do not expose
+native schema generation: the entire response must parse as JSON and pass schema validation;
+invalid output rejects without executing an action. `result.outputMode` reports `native-schema`
+or `validated-json`. Requiring `outputMode: "native-schema"` rejects incompatible transports.
+Native providers may reject schemas outside their supported subset.
+
+Defaults are a 60-second deadline, eight model turns and eight application tool calls. Claude also
+supports `maxBudgetUsd`; other transports reject it because they cannot enforce a dollar budget.
+Unknown cost is `null`. `interrupt()`, AbortSignal, `close()` and kit `dispose()` cancel active work.
+Handlers receive a signal and must honour it; cancellation cannot undo completed side effects.
+Calls are sequential per session. Portable history is replayed into fresh isolated native completions,
+bounded to 1 MiB by default (`historyLimitBytes`). Serialized tokens contain conversation/tool text;
+store them privately. They never contain copied credentials.
+
+This is a **model tool boundary, not process/container isolation**. Trusted native executables still
+use credentials and network; trusted handlers run in your process. Non-Claude transports use empty
+private workspaces rather than exposing `cwd`; that option binds the logical session identity.
+For AI Plays, provide filtered observations and validate authorization/actions again in the engine.
+Archive can review proposed edits; Content Factory's handlers must preserve its user approval gate.
+These changes do not replace backends in those applications. See [verification and version limits](SESSION_SUPPORT.md).
+
+The npm build explicitly depends on the Claude SDK's peer packages, including its own Zod 4, so an
+application using Zod 3 does not need to upgrade or suppress peer warnings.
+
 ### Continuing a session
 
 Call `agent.send()` again to continue an open conversation. To close the runtime and resume later:

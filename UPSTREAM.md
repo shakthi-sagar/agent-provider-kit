@@ -67,6 +67,17 @@ rollback, compaction, idle selection/runtime-policy changes, attachments, steeri
 Active kit session listing is separate from provider-native session listing. These wrappers reuse
 upstream driver behavior; unsupported native operations remain unsupported. See `SESSION_SUPPORT.md`.
 
+## Restricted application transport
+
+`packages/providers/src/kit/Restricted.ts` is kit-owned code. It uses the pinned Claude Agent SDK
+with an empty built-in tool set, explicit per-turn SDK MCP servers, native structured output and
+local JSON Schema validation. It bypasses the coding adapters rather than silently altering their
+defaults. `kit/restricted/` supplies isolated Pi, OpenCode, Codex and Antigravity transports, a
+host-mediated validated action loop, and an explicitly negotiated generic ACP extension. The sanitized
+Codex model catalog contains metadata only, with kit-owned prompt text. See SESSION_SUPPORT.md for
+version guards, output modes and verification limits.
+The npm manifest includes Claude SDK peer dependencies directly, isolating its Zod 4 from Zod 3 apps.
+
 ## Not ported
 
 - Managed Codex
